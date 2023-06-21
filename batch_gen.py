@@ -86,9 +86,9 @@ class BatchGenerator:
             batch_target_tensor[i, :np.shape(batch_target[i])[0]] = torch.from_numpy(batch_target[i])
             mask[i, :, :np.shape(batch_target[i])[0]] = torch.ones(self.num_classes, np.shape(batch_target[i])[0])
         # Print video names
-        print("Video names:")
-        for name in video_names:
-            print(name)
+        # print("Video names:")
+        # for name in video_names:
+        #     print(name)
 
         return batch_input_tensor, batch_target_tensor, mask, batch_confidence
 
@@ -133,8 +133,8 @@ class BatchGenerator:
             features1 = np.squeeze(features1)
             features1 = features1[:len(vid_gt)]
             boundary_target = np.ones(vid_gt.shape) * (-100)
-            print(vid_gt.shape, "shape", vid)
-            print(features1.shape, "shape", vid)
+            # print(vid_gt.shape, "shape", vid)
+            # print(features1.shape, "shape", vid)
 
             similar_video_is_in_batch = False
             for c, vid2 in enumerate(batch):
@@ -144,7 +144,7 @@ class BatchGenerator:
                     features2 = pred[c].cpu().numpy()
                     features2 = np.transpose(features2)
                     features2 = np.squeeze(features2)
-                    print(features2.shape)
+                    # print(features2.shape)
                     similar_video_is_in_batch = True
                     break
 
@@ -156,10 +156,10 @@ class BatchGenerator:
                         features2 = np.load(file_path)
                         features2 = np.transpose(features2)
                         features2 = np.squeeze(features2)
-                        print(features2.shape)
+                        # print(features2.shape)
                         break
-            print(vid)
-            print(vid2)
+            # print(vid)
+            # print(vid2)
 
             # features1 = pred[x_index, :, :].cpu().numpy()
             # features1 = np.transpose(features1)
@@ -235,8 +235,8 @@ class BatchGenerator:
 
             # for vid in similar_videos:
             video1, video2 = vid, vid2
-            print(video1)
-            print(video2)
+            # print(video1)
+            # print(video2)
             video1_content = []
             video2_content = []
 
@@ -328,9 +328,9 @@ class BatchGenerator:
                 # dtw_content.append(timestamp_frames_video1[0][1])
                 boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
             for i in range(0, len(timestamp_frames_video1) - 1):
-                print(timestamp_frames_video1[i][0], timestamp_frames_video1[i][1], len(boundary_target))
+                # print(timestamp_frames_video1[i][0], timestamp_frames_video1[i][1], len(boundary_target))
 
-                print("timestamps", timestamp_frames_video1[i])
+                # print("timestamps", timestamp_frames_video1[i])
                 boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
                     1]  # assign labels to frames with timestamp
                 # dtw_content.append(timestamp_frames_video1[i][1])
