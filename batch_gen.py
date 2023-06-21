@@ -19,7 +19,7 @@ class BatchGenerator:
         # Load annotations
         # Where do we exactly use it?
         print(gt_path, "ground truth path")
-        annotation_file_path = "/content/TimestampActionSeg/data/gtea_annotation_all.npy"
+        annotation_file_path = "/content/Graduation-DTW/data/gtea_annotation_all.npy"
         self.random_index = np.load(annotation_file_path, allow_pickle=True).item()
 
     def reset(self):
@@ -257,7 +257,7 @@ class BatchGenerator:
                     for word in line.split():
                         video2_content.append(MapLabelNumber[word])
 
-            annotation_file_path = r"/content/TimestampActionSeg/data/gtea_annotation_all.npy"
+            annotation_file_path = r"/content/Graduation-DTW/data/gtea_annotation_all.npy"
             annotations = np.load(annotation_file_path, allow_pickle=True).item()
 
             timestamp_frames_video1 = []
