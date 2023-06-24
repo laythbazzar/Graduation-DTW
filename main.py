@@ -1,3 +1,4 @@
+
 import torch
 from torch.utils.tensorboard import SummaryWriter
 from model import Trainer
@@ -8,6 +9,7 @@ import time
 import os
 from eval import evaluate
 import numpy as np
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # comment out seed to train the model
@@ -40,20 +42,20 @@ sample_rate = 1
 if args.dataset == "50salads":
     sample_rate = 2
 
-vid_list_file = "/content/drive/MyDrive/data/" + args.dataset + "/splits/train.split" + args.split + ".bundle"
-vid_list_file_tst = "/content/drive/MyDrive/data/" + args.dataset + "/splits/test.split" + args.split + ".bundle"
-features_path = "/content/drive/MyDrive/data/" + args.dataset + "/features/"
-gt_path = "/content/drive/MyDrive/data/" + args.dataset + "/groundTruth/"
+vid_list_file = "/content/drive/MyDrive/data/"+args.dataset+"/splits/train.split"+args.split+".bundle"
+vid_list_file_tst = "/content/drive/MyDrive/data/"+args.dataset+"/splits/test.split"+args.split+".bundle"
+features_path = "/content/drive/MyDrive/data/"+args.dataset+"/features/"
+gt_path = "/content/drive/MyDrive/data/"+args.dataset+"/groundTruth/"
 
-mapping_file = "/content/drive/MyDrive/data/" + args.dataset + "/mapping.txt"
+mapping_file = "/content/drive/MyDrive/data/"+args.dataset+"/mapping.txt"
 
 # Use time data to distinguish output folders in different training
 # time_data = '2020-10-15_08-52-26' # turn on this line in evaluation
 time_data = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
 bz_stages = '/margin_map_both' + time_data
-model_dir = "./models/" + args.dataset + bz_stages + "_split_" + args.split
-results_dir = "./results/" + args.dataset + bz_stages + "_split_" + args.split
-
+model_dir = "./models/"+args.dataset + bz_stages + "_split_"+args.split
+results_dir = "./results/"+args.dataset + bz_stages + "_split_"+args.split
+ 
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
 if not os.path.exists(results_dir):
@@ -79,8 +81,9 @@ if args.action == "train":
 
     # Train the model
     trainer.train(model_dir, batch_gen, writer, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
-    trainer.last_epoch_middle_out_for_each_video_in_the_data(model_dir, features_path, vid_list_file, actions_dict,
-                                                             device, sample_rate)
+    trainer.last_epoch_middle_out_for_each_video_in_the_data(model_dir, features_path, vid_list_file, actions_dict, device, sample_rate)
+    
+    
 
 # Predict the output label for each frame in evaluation and output them
 trainer.predict(model_dir, results_dir, features_path, vid_list_file_tst, num_epochs, actions_dict, device, sample_rate)

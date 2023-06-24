@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,9 +12,8 @@ class MultiStageModel(nn.Module):
     def __init__(self, num_stages, num_layers, num_f_maps, dim, num_classes):
         super(MultiStageModel, self).__init__()
         self.tower_stage = TowerModel(num_layers, num_f_maps, dim, num_classes)
-        self.single_stages = nn.ModuleList(
-            [copy.deepcopy(SingleStageModel(num_layers, num_f_maps, num_classes, num_classes, 3))
-             for s in range(num_stages - 1)])
+        self.single_stages = nn.ModuleList([copy.deepcopy(SingleStageModel(num_layers, num_f_maps, num_classes, num_classes, 3))
+                                     for s in range(num_stages-1)])
 
     def forward(self, x, mask):
         middle_out, out = self.tower_stage(x, mask)
@@ -75,6 +75,7 @@ class Trainer:
         self.mse = nn.MSELoss(reduction='none')
         self.num_classes = num_classes
 
+
     def confidence_loss(self, pred, confidence_mask, device):
         batch_size = pred.size(0)
         pred = F.log_softmax(pred, dim=1)
@@ -97,10 +98,11 @@ class Trainer:
     def train(self, save_dir, batch_gen, writer, num_epochs, batch_size, learning_rate, device):
         self.model.train()
         self.model.to(device)
+
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         start_epochs = 30
         print('start epoch of single supervision is:', start_epochs)
-        for epoch in range(30, num_epochs):
+        for epoch in range(0, num_epochs):
             epoch_loss = 0
             correct = 0
             total = 0
@@ -109,14 +111,23 @@ class Trainer:
                 batch_input, batch_target, mask = batch_input.to(device), batch_target.to(device), mask.to(device)
                 optimizer.zero_grad()
                 middle_pred, predictions = self.model(batch_input, mask)
+                #print(batch_gen.list_of_examples)
 
                 # Generate pseudo labels after training 30 epochs for getting more accurate labels
                 if epoch < start_epochs:
                     batch_boundary = batch_gen.get_single_random(batch_size, batch_input.size(-1))
                 else:
+                    print("before", )
                     batch_boundary = batch_gen.get_boundary(batch_size, middle_pred.detach())
-                batch_boundary = batch_boundary.to(device)
+                    print("after")
+                    video_names = [name for name in batch_gen.get_video_names(batch_size)]
+                    for i, video_name in enumerate(video_names):
+                        boundary_target_path = os.path.join('/content/drive/MyDrive/middle_out_results', f'middle_pred_{video_name}.npy')
+                        np.save(boundary_target_path, middle_pred[i].cpu().detach().numpy())
+                        
 
+                batch_boundary = batch_boundary.to(device)
+               
                 loss = 0
                 for p in predictions:
                     loss += self.ce(p.transpose(2, 1).contiguous().view(-1, self.num_classes), batch_boundary.view(-1))
@@ -131,7 +142,7 @@ class Trainer:
                 optimizer.step()
 
                 _, predicted = torch.max(predictions[-1].data, 1)
-                correct += ((predicted == batch_target).float() * mask[:, 0, :].squeeze(1)).sum().item()
+                correct += ((predicted == batch_target).float()*mask[:, 0, :].squeeze(1)).sum().item()
                 total += torch.sum(mask[:, 0, :]).item()
 
             batch_gen.reset()
@@ -139,12 +150,12 @@ class Trainer:
             torch.save(self.model.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".model")
             torch.save(optimizer.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".opt")
             writer.add_scalar('trainLoss', epoch_loss / len(batch_gen.list_of_examples), epoch + 1)
-            writer.add_scalar('trainAcc', float(correct) / total, epoch + 1)
+            writer.add_scalar('trainAcc', float(correct)/total, epoch + 1)
             print("[epoch %d]: epoch loss = %f,   acc = %f" % (epoch + 1, epoch_loss / len(batch_gen.list_of_examples),
-                                                               float(correct) / total))
+                                                               float(correct)/total))
 
-    def last_epoch_middle_out_for_each_video_in_the_data(self, model_dir, features_path, vid_list_file, actions_dict,
-                                                         device, sample_rate):
+
+    def last_epoch_middle_out_for_each_video_in_the_data(self, model_dir, features_path, vid_list_file, actions_dict, device, sample_rate):
         resul = {}
 
         with torch.no_grad():
@@ -156,9 +167,9 @@ class Trainer:
             # Create a folder named 'middle_out_results'
             folder_path = '/content/drive/MyDrive/middle_out_results'
             os.makedirs(folder_path, exist_ok=True)
-
+        
             for vid in list_of_vids:
-                video_name = vid.split('.')[0]
+                video_name = vid.split('.')[0] 
                 features = np.load(features_path + video_name + '.npy')
                 features = features[:, ::sample_rate]
                 input_x = torch.tensor(features, dtype=torch.float)
@@ -166,7 +177,7 @@ class Trainer:
                 input_x = input_x.to(device)
                 middle_pred, _ = self.model(input_x, torch.ones(input_x.size(), device=device))
                 resul[video_name] = middle_pred.squeeze().cpu().numpy()
-
+        
                 # Save the middle_out tensor to a file inside the created folder
                 file_name = f'middle_pred_{video_name}.npy'
                 file_path = os.path.join(folder_path, file_name)
@@ -195,7 +206,7 @@ class Trainer:
                 recognition = []
                 for i in range(len(predicted)):
                     index = list(actions_dict.values()).index(predicted[i].item())
-                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[index]] * sample_rate))
+                    recognition = np.concatenate((recognition, [list(actions_dict.keys())[index]]*sample_rate))
                 f_name = vid.split('/')[-1].split('.')[0]
                 f_ptr = open(results_dir + "/" + f_name, "w")
                 f_ptr.write("### Frame level recognition: ###\n")

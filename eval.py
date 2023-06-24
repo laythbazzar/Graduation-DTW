@@ -101,7 +101,7 @@ def evaluate(dataset, split, time_data):
     overlap = [.1, .25, .5]
     tp, fp, fn = np.zeros(3), np.zeros(3), np.zeros(3)
 
-    file_name = '/content/Graduation-DTW/result/' + time_data + '.xlsx'
+    file_name = '/content/TimestampActionSeg/result/' + time_data + '.xlsx'
     workbook = xlsxwriter.Workbook(file_name)
     worksheet = workbook.add_worksheet()
     metrics = ['F1@10', 'F1@25', 'F1@50', 'Edit', 'Acc']
@@ -163,4 +163,3 @@ def evaluate(dataset, split, time_data):
     print("Acc: %.4f" % acc)
 
     workbook.close()
-

@@ -18,7 +18,7 @@ class BatchGenerator:
 
         # Load annotations
         # Where do we exactly use it?
-        annotation_file_path = "/content/Graduation-DTW/data/gtea_annotation_all.npy"
+        annotation_file_path = "/content/TimestampActionSeg/data/gtea_annotation_all.npy"
         self.random_index = np.load(annotation_file_path, allow_pickle=True).item()
 
     def reset(self):
@@ -30,12 +30,14 @@ class BatchGenerator:
             return True
         return False
 
+
     def read_data(self, vid_list_file):
         file_ptr = open(vid_list_file, 'r')
         self.list_of_examples = file_ptr.read().split('\n')[:-1]
         file_ptr.close()
         random.shuffle(self.list_of_examples)
         self.generate_confidence_mask()
+
 
     def generate_confidence_mask(self):
         for vid in self.list_of_examples:
@@ -64,17 +66,19 @@ class BatchGenerator:
     def next_batch(self, batch_size):
         batch = self.list_of_examples[self.index:self.index + batch_size]
         self.index += batch_size
-
+        #print("next batch", self.index)
         batch_input = []
         batch_target = []
         batch_confidence = []
         video_names = []
         for vid in batch:
-            video_names.append(vid)  # Store video name
+            video_name = vid.replace(".txt", "")
+            video_names.append(video_name)  # Store video name
             features = np.load(self.features_path + vid.split('.')[0] + '.npy')
             batch_input.append(features[:, ::self.sample_rate])
             batch_target.append(self.gt[vid])
             batch_confidence.append(self.confidence_mask[vid])
+
 
         length_of_sequences = list(map(len, batch_target))
         batch_input_tensor = torch.zeros(len(batch_input), np.shape(batch_input[0])[0], max(length_of_sequences),
@@ -85,12 +89,22 @@ class BatchGenerator:
             batch_input_tensor[i, :, :np.shape(batch_input[i])[1]] = torch.from_numpy(batch_input[i])
             batch_target_tensor[i, :np.shape(batch_target[i])[0]] = torch.from_numpy(batch_target[i])
             mask[i, :, :np.shape(batch_target[i])[0]] = torch.ones(self.num_classes, np.shape(batch_target[i])[0])
-        # Print video names
-        # print("Video names:")
-        # for name in video_names:
-        #     print(name)
+        
 
         return batch_input_tensor, batch_target_tensor, mask, batch_confidence
+
+
+    
+    def get_video_names(self, batch_size):
+        batch = self.list_of_examples[self.index - batch_size:self.index]
+        video_names = []
+        for vid in batch:
+            video_name = vid.replace(".txt", "")
+            video_names.append(video_name)  # Store video name
+        print(video_names)
+        return video_names    
+
+
 
     def get_single_random(self, batch_size, max_frames):
         # Generate target for only timestamps. Do not generate pseudo labels at first 30 epochs.
@@ -109,6 +123,7 @@ class BatchGenerator:
         batch = self.list_of_examples[self.index:self.index + batch_size]
         self.index += batch_size
         video_names = []
+        #print("are_similar", self.index)
         for vid in batch:
             video_names.append(vid)
         vid1_name = x
@@ -125,6 +140,7 @@ class BatchGenerator:
         num_video, _, max_frames = pred.size()
         boundary_target_tensor = torch.ones(num_video, max_frames, dtype=torch.long) * (-100)
 
+
         for b, vid in enumerate(batch):
             single_idx = self.random_index[vid]
             vid_gt = self.gt[vid]
@@ -133,10 +149,12 @@ class BatchGenerator:
             features1 = np.squeeze(features1)
             features1 = features1[:len(vid_gt)]
             boundary_target = np.ones(vid_gt.shape) * (-100)
-            # print(vid_gt.shape, "shape", vid)
-            # print(features1.shape, "shape", vid)
+            #print(vid_gt.shape,"shape", vid)
+            #print(features1.shape,"shape", vid)
+            
 
             similar_video_is_in_batch = False
+            current_index=self.index
             for c, vid2 in enumerate(batch):
                 if (vid != vid2) and self.are_similar(batch_size, vid, vid2):
                     single_idx2 = self.random_index[vid2]
@@ -144,9 +162,10 @@ class BatchGenerator:
                     features2 = pred[c].cpu().numpy()
                     features2 = np.transpose(features2)
                     features2 = np.squeeze(features2)
-                    # print(features2.shape)
+                    #print(features2.shape, "shape", vid)
                     similar_video_is_in_batch = True
                     break
+            self.index=current_index
 
             if (similar_video_is_in_batch == False):
                 for d, vid2 in enumerate(self.list_of_examples):
@@ -154,12 +173,14 @@ class BatchGenerator:
                         vid2 = vid2.replace(".txt", "")
                         file_path = f"/content/drive/MyDrive/middle_out_results/middle_pred_{vid2}.npy"
                         features2 = np.load(file_path)
+                        #print(features2.shape, "shape", vid)
                         features2 = np.transpose(features2)
                         features2 = np.squeeze(features2)
-                        # print(features2.shape)
+                        #print(features2.shape, "shape", vid)
                         break
-            # print(vid)
-            # print(vid2)
+                self.index=current_index
+            #print(vid)
+            #print(vid2)
 
             # features1 = pred[x_index, :, :].cpu().numpy()
             # features1 = np.transpose(features1)
@@ -235,8 +256,8 @@ class BatchGenerator:
 
             # for vid in similar_videos:
             video1, video2 = vid, vid2
-            # print(video1)
-            # print(video2)
+            #print(video1)
+            #print(video2)
             video1_content = []
             video2_content = []
 
@@ -256,7 +277,7 @@ class BatchGenerator:
                     for word in line.split():
                         video2_content.append(MapLabelNumber[word])
 
-            annotation_file_path = r"/content/Graduation-DTW/data/gtea_annotation_all.npy"
+            annotation_file_path = r"/content/TimestampActionSeg/data/gtea_annotation_all.npy"
             annotations = np.load(annotation_file_path, allow_pickle=True).item()
 
             timestamp_frames_video1 = []
@@ -265,7 +286,7 @@ class BatchGenerator:
             for vid, annotation in annotations.items():
                 if vid == video1:
                     for timestamp_frame in enumerate(annotation):
-                        timestamp_frames_video1.append((timestamp_frame[1], video1_content[timestamp_frame[1]]))
+                        timestamp_frames_video1.append((timestamp_frame[1],video1_content[timestamp_frame[1]]))
 
             for vid, annotation in annotations.items():
                 if vid == video2:
@@ -276,7 +297,7 @@ class BatchGenerator:
             generated_timestamps = []
             for i in timestamp_frames_video2:
 
-                for tuple in alignment_pairs[i:]:  # (frame from video1, frame from video2) = tuple
+                for tuple in alignment_pairs[i:]:#(frame from video1, frame from video2) = tuple
                     if tuple[1] == i:
                         timestamp_pairs.append(tuple)
                         generated_timestamps.append((tuple[0], video2_content[tuple[1]]))
@@ -285,28 +306,27 @@ class BatchGenerator:
             new_timestamps = []
             # dtw_content = []
             for tuple in generated_timestamps:
-                index = 0
-                while index < (len(timestamp_frames_video1) - 1) and tuple[0] > timestamp_frames_video1[index][0]:
-                    index += 1
-                if index == 0:
-                    if (tuple[1] == timestamp_frames_video1[index][1]):
+                index_dtw = 0
+                while index_dtw < (len(timestamp_frames_video1)-1) and tuple[0] > timestamp_frames_video1[index_dtw][0]:
+                    index_dtw += 1
+                if index_dtw ==0:
+                    if (tuple[1] == timestamp_frames_video1[index_dtw][1]):
                         try:
-                            if tuple[0] == timestamp_frames_video1[index][0]:
-                                new_timestamps.insert(index + 1, (tuple[0] - 1, tuple[1]))
+                            if tuple[0] == timestamp_frames_video1[index_dtw][0]:
+                                new_timestamps.insert(index_dtw + 1, (tuple[0] - 1, tuple[1]))
                             else:
-                                new_timestamps.insert(index, tuple)
+                                new_timestamps.insert(index_dtw, tuple)
                         except IndexError:
                             print("index error")
                             print("///////////////////****************************/////////////////////**************")
                             break
                 else:
-                    if (tuple[1] == timestamp_frames_video1[index][1]) or (
-                            tuple[1] == timestamp_frames_video1[index - 1][1]):
+                    if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
                         try:
-                            if tuple[0] == timestamp_frames_video1[index][0]:
-                                new_timestamps.insert(index + 1, (tuple[0] - 1, tuple[1]))
+                            if tuple[0] == timestamp_frames_video1[index_dtw][0]:
+                                new_timestamps.insert(index_dtw + 1, (tuple[0] - 1, tuple[1]))
                             else:
-                                new_timestamps.insert(index, tuple)
+                                new_timestamps.insert(index_dtw, tuple)
                         except IndexError:
                             print("index error")
                             print("///////////////////****************************/////////////////////**************")
@@ -326,36 +346,36 @@ class BatchGenerator:
 
             for i in range(0, timestamp_frames_video1[0][0]):
                 # dtw_content.append(timestamp_frames_video1[0][1])
-                boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
+                boundary_target[i]=timestamp_frames_video1[0][1] # assign labels to frames from 0 to first timestamp
             for i in range(0, len(timestamp_frames_video1) - 1):
-                # print(timestamp_frames_video1[i][0], timestamp_frames_video1[i][1], len(boundary_target))
-
-                # print("timestamps", timestamp_frames_video1[i])
-                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
-                    1]  # assign labels to frames with timestamp
+                #print(timestamp_frames_video1[i][0],timestamp_frames_video1[i][1],len(boundary_target))
+          
+                #print("timestamps", timestamp_frames_video1[i])
+                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][1] # assign labels to frames with timestamp
                 # dtw_content.append(timestamp_frames_video1[i][1])
+
 
                 if timestamp_frames_video1[i][1] == timestamp_frames_video1[i + 1][1]:
                     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                         # dtw_content.append(timestamp_frames_video1[i][1])
-                        boundary_target[j] = timestamp_frames_video1[i][
-                            1]  # assigning labels to frames between two similar timestamps
+                        boundary_target[j] = timestamp_frames_video1[i][1] # assigning labels to frames between two similar timestamps
                 # else:
                 #     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                 #         dtw_content.append(-100)
 
             for i in range(timestamp_frames_video1[-1][0], len(video1_content)):
                 # dtw_content.append(timestamp_frames_video1[-1][1])
-                boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
-            # print(len (dtw_content))
+                boundary_target[i] = timestamp_frames_video1[0][1] # assign labels to frames from 0 to first timestamp
+            #print(len (dtw_content))
             # print(boundary_target_tensor.size())
             # for i in range (0,len(boundary_target)):
             #     if boundary_target[i] != -100:
             #         print(i,boundary_target[i],video1_content[i])
-            # dtw_content = np.array(dtw_content)
+            #dtw_content = np.array(dtw_content)
             # boundary_target[single_idx[-1]:] = vid_gt[single_idx[-1]]  # frames after last single frame has same label
             # boundary_target_tensor[b, :vid_gt.shape[0]] = torch.from_numpy(dtw_content)
             boundary_target_tensor[b, :vid_gt.shape[0]] = torch.from_numpy(boundary_target)
+            #print(boundary_target_tensor.shape)
 
         return boundary_target_tensor
 
