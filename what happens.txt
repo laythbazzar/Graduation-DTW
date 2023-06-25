@@ -277,75 +277,60 @@ class BatchGenerator:
                         timestamp_pairs.append(tuple)
                         generated_timestamps.append((tuple[0], video2_content[tuple[1]]))
                         break
-            # generated timestamp frame =100
-            # original timestamp frame = 100
 
             new_timestamps = []
             for tuple in generated_timestamps:
                 index_dtw = 0
-                while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
-                        timestamp_frames_video1[index_dtw][0]:
+                while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > timestamp_frames_video1[index_dtw][
+                    0]:
                     index_dtw += 1
                 if index_dtw == 0:
                     if (tuple[1] == timestamp_frames_video1[index_dtw][1]):
                         try:
                             if tuple[0] == timestamp_frames_video1[index_dtw][0]:
-                                # new_timestamps.insert(index_dtw + 1, (tuple[0] + 1, tuple[1]))
-                                new_timestamps.append((tuple[0] + 1, tuple[1]))
+                                new_timestamps.insert(index_dtw + 1, (tuple[0] - 1, tuple[1]))
                             else:
-                                new_timestamps.append(tuple)
+                                new_timestamps.insert(index_dtw, tuple)
                         except IndexError:
                             print("index error")
                             print("///////////////////****************************/////////////////////**************")
                             break
                 else:
-                    # dt f = 500, action =10
-                    # ot f = 500, action =5
-                    #
-                    #
-                    if (tuple[0]== timestamp_frames_video1[index_dtw][0]):
-                        if tuple[1] == timestamp_frames_video1[index_dtw-1][1]:
-                            new_timestamps.append((tuple[0] -1 , tuple[1]))
-                        if tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
-                            new_timestamps.append((tuple[0] + 1, tuple[1]))
-                    else:
-                        if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
+                    if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
                             tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
-                            new_timestamps.append((tuple[0], tuple[1]))
-
-            new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                        try:
+                            if tuple[0] == timestamp_frames_video1[index_dtw][0]:
+                                new_timestamps.insert(index_dtw + 1, (tuple[0] - 1, tuple[1]))
+                            else:
+                                new_timestamps.insert(index_dtw, tuple)
+                        except IndexError:
+                            print("index error")
+                            print("///////////////////****************************/////////////////////**************")
+                            break
 
             for tuple in new_timestamps:
-                index_dtw = 0
-                while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
-                        timestamp_frames_video1[index_dtw][0]:
-                    index_dtw +=1
-                if (tuple[0] != timestamp_frames_video1[index_dtw][0]):
-                    timestamp_frames_video1.append(tuple)
+                timestamp_frames_video1.append(tuple)
 
             timestamp_frames_video1 = sorted(timestamp_frames_video1, key=lambda x: x[0])
 
             for i in range(0, timestamp_frames_video1[0][0]):
                 boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
 
-            for i in range(0, len(timestamp_frames_video1) -1):
+            for i in range(0, len(timestamp_frames_video1) - 1):
+                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
+                    1]  # assign labels to frames with timestamp
+
                 if timestamp_frames_video1[i][1] == timestamp_frames_video1[i + 1][1]:
                     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                         boundary_target[j] = timestamp_frames_video1[i][
                             1]  # assigning labels to frames between two similar timestamps
-                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
-                    1]  # assign labels to frames with timestamp
 
-            if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][1]):# assign labels to frames from 0 to first timestamp
-                for i in range(timestamp_frames_video1[-2][0], len(video1_content)):
-                    boundary_target[i] = timestamp_frames_video1[-1][1]
-            else:
-                for i in range(timestamp_frames_video1[-1][0], len(video1_content)):
-                    boundary_target[i] = timestamp_frames_video1[-1][1]
+            for i in range(timestamp_frames_video1[-1][0], len(video1_content)):
+                boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
 
             boundary_target_tensor[b, :vid_gt.shape[0]] = torch.from_numpy(boundary_target)
             if (epoch_num % 10 == 0):
-                print(video1)
+                print(vid)
                 MaxFrames = max(len(video1_content), len(video2_content))
 
                 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(10, 2))
@@ -403,7 +388,7 @@ class BatchGenerator:
                 ax3.spines["right"].set_visible(False)
 
                 plt.savefig(
-                    "/content/drive/MyDrive/visualise/" + video1.split('.txt')[0] + "_epoch" + str(epoch_num) + ".png")
+                    "/content/drive/MyDrive/visualise/" + vid.split('.txt')[0] + "_epoch" + str(epoch_num) + ".png")
 
                 # for i in range(0,len(video1_content))
 

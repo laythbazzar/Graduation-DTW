@@ -116,9 +116,9 @@ class Trainer:
                 if epoch < start_epochs:
                     batch_boundary = batch_gen.get_single_random(batch_size, batch_input.size(-1))
                 else:
-                    print("before", )
+                    # print("before", )
                     batch_boundary = batch_gen.get_boundary(batch_size, middle_pred.detach(), epoch)
-                    print("after")
+                    # print("after")
                     video_names = [name for name in batch_gen.get_video_names(batch_size)]
                     for i, video_name in enumerate(video_names):
                         boundary_target_path = os.path.join('/content/drive/MyDrive/middle_out_results',
