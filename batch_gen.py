@@ -141,21 +141,21 @@ class BatchGenerator:
         num_video, _, max_frames = pred.size()
         boundary_target_tensor = torch.ones(num_video, max_frames, dtype=torch.long) * (-100)
 
-        for b, vid in enumerate(batch):
-            # single_idx = self.random_index[vid]
-            vid_gt = self.gt[vid]
+        for b, vid1 in enumerate(batch):
+            # single_idx = self.random_index[vid1]
+            vid1_gt = self.gt[vid1]
             features1 = pred[b].cpu().numpy()
             features1 = np.transpose(features1)
             features1 = np.squeeze(features1)
-            features1 = features1[:len(vid_gt)]
-            boundary_target = np.ones(vid_gt.shape) * (-100)
+            features1 = features1[:len(vid1_gt)]
+            boundary_target = np.ones(vid1_gt.shape) * (-100)
 
             similar_video_is_in_batch = False
             current_index = self.index
             for c, vid2 in enumerate(batch):
-                if (vid != vid2) and self.are_similar(batch_size, vid, vid2):
+                if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
                     single_idx2 = self.random_index[vid2]
-                    vid_gt2 = self.gt[vid2]
+                    vid2_gt = self.gt[vid2]
                     features2 = pred[c].cpu().numpy()
                     features2 = np.transpose(features2)
                     features2 = np.squeeze(features2)
@@ -165,7 +165,8 @@ class BatchGenerator:
 
             if (similar_video_is_in_batch == False):
                 for d, vid2 in enumerate(self.list_of_examples):
-                    if (vid != vid2) and self.are_similar(batch_size, vid, vid2):
+                    if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
+                        vid2_gt = self.gt[vid2]
                         vid2 = vid2.replace(".txt", "")
                         file_path = f"/content/drive/MyDrive/middle_out_results/middle_pred_{vid2}.npy"
                         features2 = np.load(file_path)
@@ -214,7 +215,7 @@ class BatchGenerator:
 
             mapping_file = "/content/drive/MyDrive/data/gtea/mapping.txt"
 
-            MapLabelNumber = {}
+            # MapLabelNumber = {}
             MapNumberLabel = {}
             with open(mapping_file, 'r') as mfp:
                 for line in mfp:
@@ -226,31 +227,31 @@ class BatchGenerator:
                         except ValueError:
                             print(f"Invalid number '{num}' on line '{line}' from map file")
                             continue
-                        MapLabelNumber[label] = num
+                        # MapLabelNumber[label] = num
                         MapNumberLabel[num] = label
 
             colors = cc.glasbey_light[:len(MapNumberLabel)]
 
-            # for vid in similar_videos:
-            video1, video2 = vid, vid2
-            video1_content = []
-            video2_content = []
-
-            with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video1}", 'r') as lfp:
-                for line in lfp:
-                    if line.startswith("#"):
-                        continue
-                    for word in line.split():
-                        video1_content.append(MapLabelNumber[word])
-
-            if not video2.endswith(".txt"):
-                video2 += ".txt"
-            with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video2}", 'r') as lfp:
-                for line in lfp:
-                    if line.startswith("#"):
-                        continue
-                    for word in line.split():
-                        video2_content.append(MapLabelNumber[word])
+            # for vid1 in similar_videos:
+            # video1, video2 = vid1, vid2
+            # video1_content = []
+            # video2_content = []
+            #
+            # with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video1}", 'r') as lfp:
+            #     for line in lfp:
+            #         if line.startswith("#"):
+            #             continue
+            #         for word in line.split():
+            #             video1_content.append(MapLabelNumber[word])
+            #
+            if not vid2.endswith(".txt"):
+                vid2 += ".txt"
+            # with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video2}", 'r') as lfp:
+            #     for line in lfp:
+            #         if line.startswith("#"):
+            #             continue
+            #         for word in line.split():
+            #             video2_content.append(MapLabelNumber[word])
 
             annotation_file_path = r"/content/TimestampActionSeg/data/gtea_annotation_all.npy"
             annotations = np.load(annotation_file_path, allow_pickle=True).item()
@@ -258,30 +259,30 @@ class BatchGenerator:
             timestamp_frames_video1 = []
             timestamp_frames_video2 = []
 
-            for vid, annotation in annotations.items():
-                if vid == video1:
+            for video, annotation in annotations.items():
+                if video == vid1:
                     for timestamp_frame in enumerate(annotation):
-                        timestamp_frames_video1.append((timestamp_frame[1], video1_content[timestamp_frame[1]]))
+                        timestamp_frames_video1.append((timestamp_frame[1], vid1_gt[timestamp_frame[1]]))
 
-            for vid, annotation in annotations.items():
-                if vid == video2:
+            for video, annotation in annotations.items():
+                if video == vid2:
                     for timestamp_frame in enumerate(annotation):
                         timestamp_frames_video2.append(timestamp_frame[1])
 
-            timestamp_pairs = []
+            timestamp_pairs = [] # can be deleted; for visualisation only
             generated_timestamps = []
             for i in timestamp_frames_video2:
 
                 for tuple in alignment_pairs[i:]:  # (frame from video1, frame from video2) = tuple
                     if tuple[1] == i:
                         timestamp_pairs.append(tuple)
-                        generated_timestamps.append((tuple[0], video2_content[tuple[1]]))
+                        generated_timestamps.append((tuple[0], vid2_gt[tuple[1]]))# (frame video1, action video2)
                         break
             # generated timestamp frame =100
             # original timestamp frame = 100
 
-            new_timestamps = []
-            for tuple in generated_timestamps:
+            new_timestamps = []# needed timestamps from generated timestamps
+            for tuple in generated_timestamps: # frame from video1, action label from video2
                 index_dtw = 0
                 while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
                         timestamp_frames_video1[index_dtw][0]:
@@ -290,7 +291,6 @@ class BatchGenerator:
                     if (tuple[1] == timestamp_frames_video1[index_dtw][1]):
                         try:
                             if tuple[0] == timestamp_frames_video1[index_dtw][0]:
-                                # new_timestamps.insert(index_dtw + 1, (tuple[0] + 1, tuple[1]))
                                 new_timestamps.append((tuple[0] + 1, tuple[1]))
                             else:
                                 new_timestamps.append(tuple)
@@ -299,21 +299,43 @@ class BatchGenerator:
                             print("///////////////////****************************/////////////////////**************")
                             break
                 else:
-                    # dt f = 500, action =10
-                    # ot f = 500, action =5
-                    #
-                    #
                     if (tuple[0]== timestamp_frames_video1[index_dtw][0]):
                         if tuple[1] == timestamp_frames_video1[index_dtw-1][1]:
                             new_timestamps.append((tuple[0] -1 , tuple[1]))
-                        if tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
+                        elif tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
                             new_timestamps.append((tuple[0] + 1, tuple[1]))
                     else:
                         if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
                             tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
                             new_timestamps.append((tuple[0], tuple[1]))
 
-            new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+            for index, timestamp in enumerate(new_timestamps[1:]):
+                try:
+                    index_dtw = 0
+                    while index_dtw < (len(timestamp_frames_video1) - 1) and timestamp[0] > \
+                            timestamp_frames_video1[index_dtw][0]:
+                        index_dtw += 1
+                    if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (new_timestamps[index-1][0]>=  timestamp_frames_video1[index_dtw-1][0]) \
+                        and (new_timestamps[index-1][1] != timestamp_frames_video1[index_dtw-1][1]) and (timestamp[0] <=  timestamp_frames_video1[index_dtw][0])\
+                        and (timestamp[1] == timestamp_frames_video1[index_dtw-1][1]) and (new_timestamps[index-1][0] == timestamp_frames_video1[index_dtw][1]):
+                        new_tuple1= (new_timestamps[index][0]+1,new_timestamps[index-1][1])
+                        new_tuple2 = (new_timestamps[index-1][0] - 1, new_timestamps[index][1])
+                        del new_timestamps[index]
+                        del new_timestamps[index-1]
+                        new_timestamps.insert(index-1,new_tuple2)
+                        new_timestamps.insert(index, new_tuple1)
+                        new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                        print(vid1,index_dtw)
+                        print(timestamp_frames_video1[index_dtw-1][1],new_timestamps[index-1][1],new_timestamps[index][1],timestamp_frames_video1[index_dtw][1])
+
+
+                except IndexError:
+                    print("index error in solution 1")
+                    continue
+
+
+
+            # new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
 
             for tuple in new_timestamps:
                 index_dtw = 0
@@ -333,20 +355,22 @@ class BatchGenerator:
                     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                         boundary_target[j] = timestamp_frames_video1[i][
                             1]  # assigning labels to frames between two similar timestamps
-                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
-                    1]  # assign labels to frames with timestamp
+                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][1]  # assign labels to frames with timestamp
 
             if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][1]):# assign labels to frames from 0 to first timestamp
-                for i in range(timestamp_frames_video1[-2][0], len(video1_content)):
+                for i in range(timestamp_frames_video1[-2][0], len(vid1_gt)):
                     boundary_target[i] = timestamp_frames_video1[-1][1]
             else:
-                for i in range(timestamp_frames_video1[-1][0], len(video1_content)):
+                boundary_target[timestamp_frames_video1[-2][0]] = timestamp_frames_video1[-2][1] # in case last two timestamps are bot equal,
+                # assign label to timestamp before last
+                for i in range(timestamp_frames_video1[-1][0], len(vid1_gt)):
                     boundary_target[i] = timestamp_frames_video1[-1][1]
 
-            boundary_target_tensor[b, :vid_gt.shape[0]] = torch.from_numpy(boundary_target)
+            boundary_target_tensor[b, :vid1_gt.shape[0]] = torch.from_numpy(boundary_target)
             if (epoch_num % 10 == 0):
-                print(video1)
-                MaxFrames = max(len(video1_content), len(video2_content))
+                print(vid1)
+                # print(timestamp_frames_video2)
+                MaxFrames = max(len(vid1_gt), len(vid2_gt))
 
                 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(10, 2))
 
@@ -354,7 +378,7 @@ class BatchGenerator:
 
                 # plotting the first subplot
                 x_pos = 0
-                for label in range(0, len(video1_content)):
+                for label in range(0, len(vid1_gt)):
                     if boundary_target[label] == -100:
                         ax1.barh(0, 1, left=x_pos, height=1, color='#FFFFFF')
                     else:
@@ -366,20 +390,33 @@ class BatchGenerator:
                 ax1.set_xticks([])
 
                 x_pos = 0
-                for label in video2_content:
-                    ax2.barh(0, 1, left=x_pos, height=1, color=colors[label])
+                for label in vid2_gt:
+                    ax2.barh(0, 1, left=x_pos, height=1, color=colors[int (label)])
                     x_pos += 1
                 ax2.set_xlim([0, MaxFrames])
                 ax2.set_yticks([])
                 ax2.set_xticks([])
 
                 x_pos = 0
-                for label in video1_content:
-                    ax3.barh(0, 1, left=x_pos, height=1, color=colors[label])
+                for label in vid1_gt:
+                    ax3.barh(0, 1, left=x_pos, height=1, color=colors[int (label)])
                     x_pos += 1
                 ax3.set_xlim([0, MaxFrames])
                 ax3.set_yticks([])
                 ax3.set_xticks([])
+
+                for tuple in timestamp_pairs:
+                    xyA = (tuple[0] / MaxFrames, -0.5)  # Center of the first subplot
+                    xyB = (tuple[1] / MaxFrames, 0.5)  # Left edge of the second subplot
+
+                    # Create the ConnectionPatch object with the arrow properties
+                    con = ConnectionPatch(
+                        xyA=xyA, coordsA=ax1.get_yaxis_transform(),
+                        xyB=xyB, coordsB=ax2.get_yaxis_transform(),
+                        arrowstyle="<|-|>,head_width=0.2", color='black')
+
+                    # # Add the arrow to the second subplot
+                    ax2.add_artist(con)
 
                 x_pos = 0.02
                 for i in MapNumberLabel:
@@ -403,7 +440,7 @@ class BatchGenerator:
                 ax3.spines["right"].set_visible(False)
 
                 plt.savefig(
-                    "/content/drive/MyDrive/visualise/" + video1.split('.txt')[0] + "_epoch" + str(epoch_num) + ".png")
+                    "/content/drive/MyDrive/visualise/" + vid1.split('.txt')[0] + "_epoch" + str(epoch_num) + ".png")
 
                 # for i in range(0,len(video1_content))
 
