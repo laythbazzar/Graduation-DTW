@@ -269,20 +269,20 @@ class BatchGenerator:
                     for timestamp_frame in enumerate(annotation):
                         timestamp_frames_video2.append(timestamp_frame[1])
 
-            timestamp_pairs = [] # can be deleted; for visualisation only
+            timestamp_pairs = []  # can be deleted; for visualisation only
             generated_timestamps = []
             for i in timestamp_frames_video2:
 
                 for tuple in alignment_pairs[i:]:  # (frame from video1, frame from video2) = tuple
                     if tuple[1] == i:
                         timestamp_pairs.append(tuple)
-                        generated_timestamps.append((tuple[0], vid2_gt[tuple[1]]))# (frame video1, action video2)
+                        generated_timestamps.append((tuple[0], vid2_gt[tuple[1]]))  # (frame video1, action video2)
                         break
             # generated timestamp frame =100
             # original timestamp frame = 100
 
-            new_timestamps = []# needed timestamps from generated timestamps
-            for tuple in generated_timestamps: # frame from video1, action label from video2
+            new_timestamps = []  # needed timestamps from generated timestamps
+            for tuple in generated_timestamps:  # frame from video1, action label from video2
                 index_dtw = 0
                 while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
                         timestamp_frames_video1[index_dtw][0]:
@@ -299,41 +299,53 @@ class BatchGenerator:
                             print("///////////////////****************************/////////////////////**************")
                             break
                 else:
-                    if (tuple[0]== timestamp_frames_video1[index_dtw][0]):
-                        if tuple[1] == timestamp_frames_video1[index_dtw-1][1]:
-                            new_timestamps.append((tuple[0] -1 , tuple[1]))
+                    if (tuple[0] == timestamp_frames_video1[index_dtw][0]):
+                        if tuple[1] == timestamp_frames_video1[index_dtw - 1][1]:
+                            new_timestamps.append((tuple[0] - 1, tuple[1]))
                         elif tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
                             new_timestamps.append((tuple[0] + 1, tuple[1]))
                     else:
                         if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
-                            tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
+                                tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
                             new_timestamps.append((tuple[0], tuple[1]))
 
-            for index, timestamp in enumerate(new_timestamps[1:]):
+            # if (vid1 == "S4_Coffee_C1.txt"):
+            #     print(new_timestamps)
+            #     print(generated_timestamps)
+
+            for index, timestamp in enumerate(new_timestamps):
+                if index == 0:
+                    continue
+                # print(index)
                 try:
                     index_dtw = 0
                     while index_dtw < (len(timestamp_frames_video1) - 1) and timestamp[0] > \
                             timestamp_frames_video1[index_dtw][0]:
                         index_dtw += 1
-                    if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (new_timestamps[index-1][0]>=  timestamp_frames_video1[index_dtw-1][0]) \
-                        and (new_timestamps[index-1][1] != timestamp_frames_video1[index_dtw-1][1]) and (timestamp[0] <=  timestamp_frames_video1[index_dtw][0])\
-                        and (timestamp[1] == timestamp_frames_video1[index_dtw-1][1]) and (new_timestamps[index-1][0] == timestamp_frames_video1[index_dtw][1]):
-                        new_tuple1= (new_timestamps[index][0]+1,new_timestamps[index-1][1])
-                        new_tuple2 = (new_timestamps[index-1][0] - 1, new_timestamps[index][1])
+                    if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
+                            new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
+                            and (new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1]) and (
+                            timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
+                            and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
+                            new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1]):
+                        # print(vid1, index_dtw, index)
+                        # print(timestamp_frames_video1[index_dtw - 1][1], new_timestamps[index - 1][1],
+                        # new_timestamps[index][1], timestamp_frames_video1[index_dtw][1])
+                        new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                        new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
                         del new_timestamps[index]
-                        del new_timestamps[index-1]
-                        new_timestamps.insert(index-1,new_tuple2)
+                        del new_timestamps[index - 1]
+                        new_timestamps.insert(index - 1, new_tuple2)
                         new_timestamps.insert(index, new_tuple1)
                         new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                        print(vid1,index_dtw)
-                        print(timestamp_frames_video1[index_dtw-1][1],new_timestamps[index-1][1],new_timestamps[index][1],timestamp_frames_video1[index_dtw][1])
-
 
                 except IndexError:
                     print("index error in solution 1")
                     continue
 
-
+            # if (vid1 == "S4_Coffee_C1.txt"):
+            #     print(new_timestamps)
+            #     print(generated_timestamps)
 
             # new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
 
@@ -341,7 +353,7 @@ class BatchGenerator:
                 index_dtw = 0
                 while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
                         timestamp_frames_video1[index_dtw][0]:
-                    index_dtw +=1
+                    index_dtw += 1
                 if (tuple[0] != timestamp_frames_video1[index_dtw][0]):
                     timestamp_frames_video1.append(tuple)
 
@@ -350,18 +362,21 @@ class BatchGenerator:
             for i in range(0, timestamp_frames_video1[0][0]):
                 boundary_target[i] = timestamp_frames_video1[0][1]  # assign labels to frames from 0 to first timestamp
 
-            for i in range(0, len(timestamp_frames_video1) -1):
+            for i in range(0, len(timestamp_frames_video1) - 1):
                 if timestamp_frames_video1[i][1] == timestamp_frames_video1[i + 1][1]:
                     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                         boundary_target[j] = timestamp_frames_video1[i][
                             1]  # assigning labels to frames between two similar timestamps
-                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][1]  # assign labels to frames with timestamp
+                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
+                    1]  # assign labels to frames with timestamp
 
-            if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][1]):# assign labels to frames from 0 to first timestamp
+            if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][
+                1]):  # assign labels to frames from 0 to first timestamp
                 for i in range(timestamp_frames_video1[-2][0], len(vid1_gt)):
                     boundary_target[i] = timestamp_frames_video1[-1][1]
             else:
-                boundary_target[timestamp_frames_video1[-2][0]] = timestamp_frames_video1[-2][1] # in case last two timestamps are bot equal,
+                boundary_target[timestamp_frames_video1[-2][0]] = timestamp_frames_video1[-2][
+                    1]  # in case last two timestamps are bot equal,
                 # assign label to timestamp before last
                 for i in range(timestamp_frames_video1[-1][0], len(vid1_gt)):
                     boundary_target[i] = timestamp_frames_video1[-1][1]
@@ -391,7 +406,7 @@ class BatchGenerator:
 
                 x_pos = 0
                 for label in vid2_gt:
-                    ax2.barh(0, 1, left=x_pos, height=1, color=colors[int (label)])
+                    ax2.barh(0, 1, left=x_pos, height=1, color=colors[int(label)])
                     x_pos += 1
                 ax2.set_xlim([0, MaxFrames])
                 ax2.set_yticks([])
@@ -399,7 +414,7 @@ class BatchGenerator:
 
                 x_pos = 0
                 for label in vid1_gt:
-                    ax3.barh(0, 1, left=x_pos, height=1, color=colors[int (label)])
+                    ax3.barh(0, 1, left=x_pos, height=1, color=colors[int(label)])
                     x_pos += 1
                 ax3.set_xlim([0, MaxFrames])
                 ax3.set_yticks([])
