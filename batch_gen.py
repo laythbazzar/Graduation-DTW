@@ -299,15 +299,18 @@ class BatchGenerator:
                             print("///////////////////****************************/////////////////////**************")
                             break
                 else:
-                    if (tuple[0] == timestamp_frames_video1[index_dtw][0]):
-                        if tuple[1] == timestamp_frames_video1[index_dtw - 1][1]:
-                            new_timestamps.append((tuple[0] - 1, tuple[1]))
-                        elif tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
-                            new_timestamps.append((tuple[0] + 1, tuple[1]))
-                    else:
-                        if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
+                    try:
+                        if (tuple[0] == timestamp_frames_video1[index_dtw][0]):
+                            if tuple[1] == timestamp_frames_video1[index_dtw - 1][1]:
+                                new_timestamps.append((tuple[0] - 1, tuple[1]))
+                            elif tuple[1] == timestamp_frames_video1[index_dtw + 1][1]:
+                                new_timestamps.append((tuple[0] + 1, tuple[1]))
+                        else:
+                            if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
                                 tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
-                            new_timestamps.append((tuple[0], tuple[1]))
+                                new_timestamps.append((tuple[0], tuple[1]))
+                    except IndexError:
+                        continue
 
             # if (vid1 == "S4_Coffee_C1.txt"):
             #     print(new_timestamps)
@@ -383,7 +386,7 @@ class BatchGenerator:
 
             boundary_target_tensor[b, :vid1_gt.shape[0]] = torch.from_numpy(boundary_target)
             if (epoch_num % 10 == 0):
-                print(vid1)
+                # print(vid1)
                 # print(timestamp_frames_video2)
                 MaxFrames = max(len(vid1_gt), len(vid2_gt))
 
