@@ -34,6 +34,8 @@ class BatchGenerator:
         self.index = 0
         random.shuffle(self.list_of_examples)
 
+    # def fn-tn-tp(self):
+
     def has_next(self):
         if self.index < len(self.list_of_examples):
             return True
@@ -140,6 +142,9 @@ class BatchGenerator:
         batch = self.list_of_examples[self.index - batch_size:self.index]
         num_video, _, max_frames = pred.size()
         boundary_target_tensor = torch.ones(num_video, max_frames, dtype=torch.long) * (-100)
+        tp = 0
+        fp = 0
+        fn = 0
 
         for b, vid1 in enumerate(batch):
             # single_idx = self.random_index[vid1]
@@ -154,7 +159,7 @@ class BatchGenerator:
             current_index = self.index
             for c, vid2 in enumerate(batch):
                 if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
-                    single_idx2 = self.random_index[vid2]
+                    # single_idx2 = self.random_index[vid2]
                     vid2_gt = self.gt[vid2]
                     features2 = pred[c].cpu().numpy()
                     features2 = np.transpose(features2)
@@ -307,7 +312,7 @@ class BatchGenerator:
                                 new_timestamps.append((tuple[0] + 1, tuple[1]))
                         else:
                             if (tuple[1] == timestamp_frames_video1[index_dtw][1]) or (
-                                tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
+                                    tuple[1] == timestamp_frames_video1[index_dtw - 1][1]):
                                 new_timestamps.append((tuple[0], tuple[1]))
                     except IndexError:
                         continue
@@ -385,7 +390,18 @@ class BatchGenerator:
                     boundary_target[i] = timestamp_frames_video1[-1][1]
 
             boundary_target_tensor[b, :vid1_gt.shape[0]] = torch.from_numpy(boundary_target)
+
+            for frame in range(0, len(vid1_gt)):
+                if boundary_target[frame] == -100:
+                    fn += 1
+                else:
+                    if int(boundary_target[frame]) == int(vid1_gt[frame]):
+                        tp += 1
+                    else:
+                        fp += 1
+
             if (epoch_num % 10 == 0):
+
                 # print(vid1)
                 # print(timestamp_frames_video2)
                 MaxFrames = max(len(vid1_gt), len(vid2_gt))
@@ -396,13 +412,15 @@ class BatchGenerator:
 
                 # plotting the first subplot
                 x_pos = 0
+                # numOfFrames=0
                 for label in range(0, len(vid1_gt)):
                     if boundary_target[label] == -100:
                         ax1.barh(0, 1, left=x_pos, height=1, color='#FFFFFF')
                     else:
                         ax1.barh(0, 1, left=x_pos, height=1, color=colors[int(boundary_target[label])])
+                        # numOfFrames+=1
                     x_pos += 1
-
+                # print(numOfFrames/len(vid1_gt))
                 ax1.set_xlim([0, MaxFrames])
                 ax1.set_yticks([])
                 ax1.set_xticks([])
@@ -462,8 +480,7 @@ class BatchGenerator:
 
                 # for i in range(0,len(video1_content))
 
-        return boundary_target_tensor
-
+        return boundary_target_tensor, tp, fp, fn
         # return dtw_content
 
 

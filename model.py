@@ -101,10 +101,13 @@ class Trainer:
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         start_epochs = 30
         print('start epoch of single supervision is:', start_epochs)
-        for epoch in range(0, num_epochs):
+        for epoch in range(30, num_epochs):
             epoch_loss = 0
             correct = 0
             total = 0
+            atp=0
+            afp=0
+            afn=0
             while batch_gen.has_next():
                 batch_input, batch_target, mask, batch_confidence = batch_gen.next_batch(batch_size)
                 batch_input, batch_target, mask = batch_input.to(device), batch_target.to(device), mask.to(device)
@@ -116,9 +119,10 @@ class Trainer:
                 if epoch < start_epochs:
                     batch_boundary = batch_gen.get_single_random(batch_size, batch_input.size(-1))
                 else:
-                    # print("before", )
-                    batch_boundary = batch_gen.get_boundary(batch_size, middle_pred.detach(), epoch)
-                    # print("after")
+                    batch_boundary,tp,fp,fn = batch_gen.get_boundary(batch_size, middle_pred.detach(), epoch)
+                    atp+=tp
+                    afp+=fp
+                    afn+=fn
                 video_names = [name for name in batch_gen.get_video_names(batch_size)]
                 for i, video_name in enumerate(video_names):
                     boundary_target_path = os.path.join('/content/drive/MyDrive/middle_out_results',
@@ -144,6 +148,9 @@ class Trainer:
                 correct += ((predicted == batch_target).float() * mask[:, 0, :].squeeze(1)).sum().item()
                 total += torch.sum(mask[:, 0, :]).item()
 
+            if ((atp+afp) != 0) and (atp/(atp+afn) != 0):
+                print("precision:", atp/(atp+afp))
+                print("recall:", atp/(atp+afn))
             batch_gen.reset()
 
             torch.save(self.model.state_dict(), save_dir + "/epoch-" + str(epoch + 1) + ".model")
