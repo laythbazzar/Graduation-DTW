@@ -79,8 +79,8 @@ if args.action == "train":
 
     # Train the model
     trainer.train(model_dir, batch_gen, writer, num_epochs=num_epochs, batch_size=bz, learning_rate=lr, device=device)
-    trainer.last_epoch_middle_out_for_each_video_in_the_data(model_dir, features_path, vid_list_file, actions_dict,
-                                                             device, sample_rate)
+    # trainer.last_epoch_middle_out_for_each_video_in_the_data(model_dir, features_path, vid_list_file, actions_dict,
+                                                            #  device, sample_rate)
 
 # Predict the output label for each frame in evaluation and output them
 trainer.predict(model_dir, results_dir, features_path, vid_list_file_tst, num_epochs, actions_dict, device, sample_rate)

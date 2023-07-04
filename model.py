@@ -101,7 +101,7 @@ class Trainer:
         optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
         start_epochs = 30
         print('start epoch of single supervision is:', start_epochs)
-        for epoch in range(30, num_epochs):
+        for epoch in range(0, num_epochs):
             epoch_loss = 0
             correct = 0
             total = 0

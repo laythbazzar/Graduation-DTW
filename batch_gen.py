@@ -400,6 +400,8 @@ class BatchGenerator:
                     else:
                         fp += 1
 
+            print(vid1, "precision", tp / (tp + fp), "recall", tp / (tp + fn))
+
             if (epoch_num % 10 == 0):
 
                 # print(vid1)
@@ -482,6 +484,8 @@ class BatchGenerator:
 
         return boundary_target_tensor, tp, fp, fn
         # return dtw_content
+
+
 
 
 
