@@ -56,6 +56,35 @@ def levenstein(p, y, norm=False):
 
     return score
 
+def levenstein2(p, y, norm=False):
+    m_row = len(p)
+    n_col = len(y)
+    D = np.zeros([m_row+1, n_col+1], np.float)
+    for i in range(m_row+1):
+        D[i, 0] = i
+    for i in range(n_col+1):
+        D[0, i] = i
+
+    for j in range(1, n_col+1):
+        for i in range(1, m_row+1):
+            if y[j-1] == p[i-1]:
+                D[i, j] = D[i-1, j-1]
+            else:
+                D[i, j] = min(D[i-1, j] + 1,
+                              D[i, j-1] + 1,
+                              D[i-1, j-1] + 1)
+
+    if norm:
+        score = (D[-1, -1]/max(m_row, n_col)) * 100
+    else:
+        score = D[-1, -1]
+
+    return score
+
+def edit_score2(recognized, ground_truth, norm=True, bg_class=["background"]):
+    P, _, _ = get_labels_start_end_time(recognized, bg_class)
+    Y, _, _ = get_labels_start_end_time(ground_truth, bg_class)
+    return levenstein2(P, Y, norm)
 
 def edit_score(recognized, ground_truth, norm=True, bg_class=["background"]):
     P, _, _ = get_labels_start_end_time(recognized, bg_class)
