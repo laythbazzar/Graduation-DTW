@@ -27,7 +27,8 @@ class BatchGenerator:
 
         # Load annotations
         # Where do we exactly use it?
-        annotation_file_path = "/content/TimestampActionSeg/data/gtea_annotation_all.npy"
+        annotation_file_path = "/content/TimestampActionSeg/data/" + gt_path.split("/")[5] + "_annotation_all.npy"
+        print(" annotation file",annotation_file_path )
         self.random_index = np.load(annotation_file_path, allow_pickle=True).item()
 
     def reset(self):
@@ -147,7 +148,7 @@ class BatchGenerator:
         fn = 0
 
         for b, vid1 in enumerate(batch):
-            # single_idx = self.random_index[vid1]
+            single_idx1 = self.random_index[vid1]
             vid1_gt = self.gt[vid1]
             features1 = pred[b].cpu().numpy()
             features1 = np.transpose(features1)
@@ -159,7 +160,7 @@ class BatchGenerator:
             current_index = self.index
             for c, vid2 in enumerate(batch):
                 if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
-                    # single_idx2 = self.random_index[vid2]
+                    single_idx2 = self.random_index[vid2]
                     vid2_gt = self.gt[vid2]
                     features2 = pred[c].cpu().numpy()
                     features2 = np.transpose(features2)
@@ -172,6 +173,7 @@ class BatchGenerator:
                 for d, vid2 in enumerate(self.list_of_examples):
                     if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
                         vid2_gt = self.gt[vid2]
+                        single_idx2 = self.random_index[vid2]
                         vid2 = vid2.replace(".txt", "")
                         file_path = f"/content/drive/MyDrive/middle_out_results/middle_pred_{vid2}.npy"
                         features2 = np.load(file_path)
@@ -236,43 +238,29 @@ class BatchGenerator:
                         MapNumberLabel[num] = label
 
             colors = cc.glasbey_light[:len(MapNumberLabel)]
-
-            # for vid1 in similar_videos:
-            # video1, video2 = vid1, vid2
-            # video1_content = []
-            # video2_content = []
-            #
-            # with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video1}", 'r') as lfp:
-            #     for line in lfp:
-            #         if line.startswith("#"):
-            #             continue
-            #         for word in line.split():
-            #             video1_content.append(MapLabelNumber[word])
             #
             if not vid2.endswith(".txt"):
                 vid2 += ".txt"
-            # with open(f"/content/drive/MyDrive/data/gtea/groundTruth/{video2}", 'r') as lfp:
-            #     for line in lfp:
-            #         if line.startswith("#"):
-            #             continue
-            #         for word in line.split():
-            #             video2_content.append(MapLabelNumber[word])
 
-            annotation_file_path = r"/content/TimestampActionSeg/data/gtea_annotation_all.npy"
-            annotations = np.load(annotation_file_path, allow_pickle=True).item()
+            # annotation_file_path = r"/content/TimestampActionSeg/data/gtea_annotation_all.npy"
+            # annotations = np.load(annotation_file_path, allow_pickle=True).item()
 
             timestamp_frames_video1 = []
-            timestamp_frames_video2 = []
+            timestamp_frames_video2 = single_idx2
 
-            for video, annotation in annotations.items():
-                if video == vid1:
-                    for timestamp_frame in enumerate(annotation):
-                        timestamp_frames_video1.append((timestamp_frame[1], vid1_gt[timestamp_frame[1]]))
+            for timestamp in single_idx1:
+                timestamp_frames_video1.append((timestamp, vid1_gt[timestamp]))
+                # print((timestamp,vid1_gt[timestamp]))
 
-            for video, annotation in annotations.items():
-                if video == vid2:
-                    for timestamp_frame in enumerate(annotation):
-                        timestamp_frames_video2.append(timestamp_frame[1])
+            # for video, annotation in annotations.items():
+            #     if video == vid1:
+            #         for timestamp_frame in enumerate(annotation):
+            #             timestamp_frames_video1.append((timestamp_frame[1], vid1_gt[timestamp_frame[1]]))
+            #
+            # for video, annotation in annotations.items():
+            #     if video == vid2:
+            #         for timestamp_frame in enumerate(annotation):
+            #             timestamp_frames_video2.append(timestamp_frame[1])
 
             timestamp_pairs = []  # can be deleted; for visualisation only
             generated_timestamps = []
@@ -347,30 +335,6 @@ class BatchGenerator:
                                 new_timestamps.insert(index - 1, new_tuple2)
                                 new_timestamps.insert(index, new_tuple1)
                                 new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                            else:
-                                if (new_timestamps[index][1]== new_timestamps[index -2][1]) \
-                                    and (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
-                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
-                                    new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
-                                    del new_timestamps[index]
-                                    del new_timestamps[index - 1]
-                                    new_timestamps.insert(index - 1, new_tuple2)
-                                    new_timestamps.insert(index, new_tuple1)
-                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                                elif (new_timestamps[index][1]== new_timestamps[index -2][1]):
-                                    new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
-                                    del new_timestamps[index]
-                                    del new_timestamps[index - 1]
-                                    new_timestamps.insert(index - 1, new_tuple1)
-                                    # new_timestamps.insert(index, new_tuple1)
-                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                                elif (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
-                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
-                                    del new_timestamps[index]
-                                    del new_timestamps[index - 1]
-                                    new_timestamps.insert(index - 1, new_tuple1)
-                                # else:delete
-
                         else:
                             if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
                                     new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
@@ -380,21 +344,13 @@ class BatchGenerator:
                                     and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
                                     new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1]) \
                                     and (new_timestamps[index + 1][0] > timestamp_frames_video1[index_dtw][0]):
-                                new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
                                 del new_timestamps[index]
                                 del new_timestamps[index - 1]
                                 new_timestamps.insert(index - 1, new_tuple2)
                                 new_timestamps.insert(index, new_tuple1)
                                 new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-
-                            else:
-                                if (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
-                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
-                                    del new_timestamps[index]
-                                    del new_timestamps[index - 1]
-                                    new_timestamps.insert(index - 1, new_tuple1)
-                                # else: delete
-
                     else:
                         if (index >1):
                             if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
@@ -412,15 +368,6 @@ class BatchGenerator:
                                 new_timestamps.insert(index - 1, new_tuple2)
                                 new_timestamps.insert(index, new_tuple1)
                                 new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                            else:
-                                if (new_timestamps[index][1] == new_timestamps[index - 2][1]):
-                                    new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
-                                    del new_timestamps[index]
-                                    del new_timestamps[index - 1]
-                                    new_timestamps.insert(index - 1, new_tuple1)
-                                    # new_timestamps.insert(index, new_tuple1)
-                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                                # else: delete
                         else:
                             if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
                                     new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
@@ -436,7 +383,6 @@ class BatchGenerator:
                                 new_timestamps.insert(index - 1, new_tuple2)
                                 new_timestamps.insert(index, new_tuple1)
                                 new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-                            # else:delete
 
                 except IndexError:
                     print("index error in solution 1")
@@ -466,9 +412,10 @@ class BatchGenerator:
                     for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
                         boundary_target[j] = timestamp_frames_video1[i][
                             1]  # assigning labels to frames between two similar timestamps
-                boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
-                    1]  # assign labels to frames with timestamp
-
+                # boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
+                #     1]  # assign labels to frames with timestamp
+            for timestamp in single_idx1:
+                boundary_target[timestamp] = vid1_gt[timestamp]
             if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][
                 1]):  # assign labels to frames from 0 to first timestamp
                 for i in range(timestamp_frames_video1[-2][0], len(vid1_gt)):
