@@ -12,6 +12,35 @@ matplotlib.use('Agg')
 
 
 # from eval import Visualize_DTW_TimeStamps
+def normalized_edit_distance(transcript1, transcript2):
+    n = len(transcript1)
+    m = len(transcript2)
+
+    # Create a distance matrix
+    distance = [[0] * (m + 1) for _ in range(n + 1)]
+
+    # Initialize the first row and column
+    for i in range(n + 1):
+        distance[i][0] = i
+    for j in range(m + 1):
+        distance[0][j] = j
+
+    # Compute the minimum edit distance
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            if transcript1[i - 1] == transcript2[j - 1]:
+                cost = 0
+            else:
+                cost = 1
+            distance[i][j] = min(distance[i - 1][j] + 1,  # Deletion
+                                 distance[i][j - 1] + 1,  # Insertion
+                                 distance[i - 1][j - 1] + cost)  # Substitution
+
+    # Compute the normalized edit distance
+    max_length = max(n, m)
+    normalized_distance = distance[n][m] / max_length
+
+    return normalized_distance
 
 
 class BatchGenerator:
@@ -161,16 +190,24 @@ class BatchGenerator:
             features1 = np.squeeze(features1)
             features1 = features1[:len(vid1_gt)]
             boundary_target = np.ones(vid1_gt.shape) * (-100)
+            transcript_vid1 = []
+            for frame in single_idx1:
+                transcript_vid1.append(vid1_gt[frame])
 
             distances_list = []
             if (len(batch) > 1):
                 current_index = self.index
                 for c, vid2 in enumerate(batch):
                     if vid1 != vid2:
+                        transcript_vid2 = []
+                        for frame in self.random_index[vid2]:
+                            transcript_vid2.append(self.gt[vid2][frame])
                         # vid2_gt = self.gt[vid2]
                         len_diff = abs(len(vid1_gt) - len(self.gt[vid2])) / max(len(vid1_gt), len(self.gt[vid2]))
                         # single_idx2 = self.random_index[vid2]
-                        distances_list.append(((edit_score2(single_idx1, self.random_index[vid2]) + len_diff), vid2))
+                        # print( self.random_index[vid2])
+                        distances_list.append(
+                            (normalized_edit_distance(transcript_vid1, transcript_vid2) + len_diff, vid2))
                         distances_list = sorted(distances_list, key=lambda x: x[0])
                 vid2 = distances_list[0][1]
                 vid2_gt = self.gt[vid2]
@@ -180,17 +217,20 @@ class BatchGenerator:
                 features2 = np.transpose(features2)
                 features2 = np.squeeze(features2)
 
-
-
             else:
                 current_index = self.index
                 self.index -= batch_size
                 previous_batch = self.list_of_examples[self.index - batch_size:self.index]
                 for c, vid2 in enumerate(previous_batch):
                     if vid1 != vid2:
+                        transcript_vid2 = []
+                        for frame in self.random_index[vid2]:
+                            transcript_vid2.append(self.gt[vid2][frame])
                         len_diff = abs(len(vid1_gt) - len(self.gt[vid2])) / max(len(vid1_gt), len(self.gt[vid2]))
-                        distances_list.append(((edit_score2(single_idx1, self.random_index[vid2]) + len_diff), vid2))
-                distances_list = sorted(distances_list, key=lambda x: x[0])
+                        # print(single_idx1, self.random_index[vid2])
+                        distances_list.append(
+                            (normalized_edit_distance(transcript_vid1, transcript_vid2) + len_diff, vid2))
+                        distances_list = sorted(distances_list, key=lambda x: x[0])
                 vid2 = distances_list[0][1]
                 vid2_gt = self.gt[vid2]
                 single_idx2 = self.random_index[vid2]
@@ -200,6 +240,7 @@ class BatchGenerator:
                 features2 = np.transpose(features2)
                 features2 = np.squeeze(features2)
 
+            # print(vid1, distances_list)
             n, m = features1.shape[0], features2.shape[0]
             dtw = np.zeros((n, m))
             dist = distance.cdist(features1, features2, metric=dist_method)
