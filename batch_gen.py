@@ -330,22 +330,113 @@ class BatchGenerator:
                     while index_dtw < (len(timestamp_frames_video1) - 1) and timestamp[0] > \
                             timestamp_frames_video1[index_dtw][0]:
                         index_dtw += 1
-                    if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
-                            new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
-                            and (new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1]) and (
-                            timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
-                            and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
-                            new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1]):
-                        # print(vid1, index_dtw, index)
-                        # print(timestamp_frames_video1[index_dtw - 1][1], new_timestamps[index - 1][1],
-                        # new_timestamps[index][1], timestamp_frames_video1[index_dtw][1])
-                        new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
-                        new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
-                        del new_timestamps[index]
-                        del new_timestamps[index - 1]
-                        new_timestamps.insert(index - 1, new_tuple2)
-                        new_timestamps.insert(index, new_tuple1)
-                        new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                    if (index <(len(new_timestamps)-1)): #to make sure it is not last
+                        if (index >1):
+                            if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
+                                    new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
+                                    and (new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1])\
+                                    and (timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
+                                    and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) \
+                                    and (new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1])\
+                                    and (new_timestamps[index +1 ][0] > timestamp_frames_video1[index_dtw][0])\
+                                    and (new_timestamps[index -2][0] < timestamp_frames_video1[index_dtw-1][0]):
+                                new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                del new_timestamps[index]
+                                del new_timestamps[index - 1]
+                                new_timestamps.insert(index - 1, new_tuple2)
+                                new_timestamps.insert(index, new_tuple1)
+                                new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                            else:
+                                if (new_timestamps[index][1]== new_timestamps[index -2][1]) \
+                                    and (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
+                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                    new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                    del new_timestamps[index]
+                                    del new_timestamps[index - 1]
+                                    new_timestamps.insert(index - 1, new_tuple2)
+                                    new_timestamps.insert(index, new_tuple1)
+                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                                elif (new_timestamps[index][1]== new_timestamps[index -2][1]):
+                                    new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                    del new_timestamps[index]
+                                    del new_timestamps[index - 1]
+                                    new_timestamps.insert(index - 1, new_tuple1)
+                                    # new_timestamps.insert(index, new_tuple1)
+                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                                elif (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
+                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                    del new_timestamps[index]
+                                    del new_timestamps[index - 1]
+                                    new_timestamps.insert(index - 1, new_tuple1)
+                                # else:delete
+
+                        else:
+                            if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
+                                    new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
+                                    and (
+                                    new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
+                                    and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1]) \
+                                    and (new_timestamps[index + 1][0] > timestamp_frames_video1[index_dtw][0]):
+                                new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                del new_timestamps[index]
+                                del new_timestamps[index - 1]
+                                new_timestamps.insert(index - 1, new_tuple2)
+                                new_timestamps.insert(index, new_tuple1)
+                                new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+
+                            else:
+                                if (new_timestamps[index+1][1]== new_timestamps[index -1][1]):
+                                    new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                    del new_timestamps[index]
+                                    del new_timestamps[index - 1]
+                                    new_timestamps.insert(index - 1, new_tuple1)
+                                # else: delete
+
+                    else:
+                        if (index >1):
+                            if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
+                                    new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
+                                    and (
+                                    new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
+                                    and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1])\
+                                    and (new_timestamps[index -2][0] < timestamp_frames_video1[index_dtw-1][0]):
+                                new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                del new_timestamps[index]
+                                del new_timestamps[index - 1]
+                                new_timestamps.insert(index - 1, new_tuple2)
+                                new_timestamps.insert(index, new_tuple1)
+                                new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                            else:
+                                if (new_timestamps[index][1] == new_timestamps[index - 2][1]):
+                                    new_tuple1 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                    del new_timestamps[index]
+                                    del new_timestamps[index - 1]
+                                    new_timestamps.insert(index - 1, new_tuple1)
+                                    # new_timestamps.insert(index, new_tuple1)
+                                    new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                                # else: delete
+                        else:
+                            if (timestamp[1] != timestamp_frames_video1[index_dtw][1]) and (
+                                    new_timestamps[index - 1][0] >= timestamp_frames_video1[index_dtw - 1][0]) \
+                                    and (
+                                    new_timestamps[index - 1][1] != timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    timestamp[0] <= timestamp_frames_video1[index_dtw][0]) \
+                                    and (timestamp[1] == timestamp_frames_video1[index_dtw - 1][1]) and (
+                                    new_timestamps[index - 1][1] == timestamp_frames_video1[index_dtw][1]):
+                                new_tuple1 = (new_timestamps[index][0] + 1, new_timestamps[index - 1][1])
+                                new_tuple2 = (new_timestamps[index - 1][0] - 1, new_timestamps[index][1])
+                                del new_timestamps[index]
+                                del new_timestamps[index - 1]
+                                new_timestamps.insert(index - 1, new_tuple2)
+                                new_timestamps.insert(index, new_tuple1)
+                                new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
+                            # else:delete
 
                 except IndexError:
                     print("index error in solution 1")
@@ -400,7 +491,7 @@ class BatchGenerator:
                     else:
                         fp += 1
 
-            print(vid1, "precision", tp / (tp + fp), "recall", tp / (tp + fn))
+            # print(vid1, "precision", tp / (tp + fp), "recall", tp / (tp + fn))
 
             if (epoch_num % 10 == 0):
 
