@@ -6,12 +6,8 @@ from matplotlib.patches import ConnectionPatch
 import matplotlib.pyplot as plt
 import colorcet as cc
 import matplotlib
-
+from eval import levenstein2
 matplotlib.use('Agg')
-
-
-# from eval import Visualize_DTW_TimeStamps
-
 
 class BatchGenerator:
     def __init__(self, num_classes, actions_dict, gt_path, features_path, sample_rate):
@@ -27,8 +23,7 @@ class BatchGenerator:
 
         # Load annotations
         # Where do we exactly use it?
-        annotation_file_path = "/content/TimestampActionSeg/data/" + gt_path.split("/")[5] + "_annotation_all.npy"
-        print(" annotation file",annotation_file_path )
+        annotation_file_path = "/content/TimestampActionSeg/data/"+self.gt_path.split('/')[5]+"_annotation_all.npy"
         self.random_index = np.load(annotation_file_path, allow_pickle=True).item()
 
     def reset(self):
@@ -110,6 +105,7 @@ class BatchGenerator:
         # print(video_names)
         return video_names
 
+
     def get_single_random(self, batch_size, max_frames):
         # Generate target for only timestamps. Do not generate pseudo labels at first 30 epochs.
         batch = self.list_of_examples[self.index - batch_size:self.index]
@@ -123,21 +119,22 @@ class BatchGenerator:
 
         return boundary_target_tensor
 
-    def are_similar(self, batch_size, x, y):
-        batch = self.list_of_examples[self.index:self.index + batch_size]
-        self.index += batch_size
-        video_names = []
-        # print("are_similar", self.index)
-        for vid in batch:
-            video_names.append(vid)
-        vid1_name = x
-        vid2_name = y
+    # def are_similar(self, batch_size, x, y):
+    #     batch = self.list_of_examples[self.index:self.index + batch_size]
+    #     self.index += batch_size
+    #     video_names = []
+    #     # print("are_similar", self.index)
+    #     for vid in batch:
+    #         video_names.append(vid)
+    #     vid1_name = x
+    #     vid2_name = y
 
-        vid1_category = vid1_name.split("_")[-2]
-        vid2_category = vid2_name.split("_")[-2]
+    #     vid1_category = vid1_name.split("_")[-2]
+    #     vid2_category = vid2_name.split("_")[-2]
 
-        # Check if the categories are the same
-        return vid1_category == vid2_category
+    #     # Check if the categories are the same
+    #     return vid1_category == vid2_category
+
 
     def get_boundary(self, batch_size, pred, epoch_num, dist_method='euclidean'):
         batch = self.list_of_examples[self.index - batch_size:self.index]
@@ -155,32 +152,55 @@ class BatchGenerator:
             features1 = np.squeeze(features1)
             features1 = features1[:len(vid1_gt)]
             boundary_target = np.ones(vid1_gt.shape) * (-100)
+            transcript_vid1 = []
+            for frame in single_idx1:
+                transcript_vid1.append(vid1_gt[frame])
 
-            similar_video_is_in_batch = False
-            current_index = self.index
-            for c, vid2 in enumerate(batch):
-                if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
-                    single_idx2 = self.random_index[vid2]
-                    vid2_gt = self.gt[vid2]
-                    features2 = pred[c].cpu().numpy()
-                    features2 = np.transpose(features2)
-                    features2 = np.squeeze(features2)
-                    similar_video_is_in_batch = True
-                    break
-            self.index = current_index
-
-            if (similar_video_is_in_batch == False):
-                for d, vid2 in enumerate(self.list_of_examples):
-                    if (vid1 != vid2) and self.are_similar(batch_size, vid1, vid2):
-                        vid2_gt = self.gt[vid2]
-                        single_idx2 = self.random_index[vid2]
-                        vid2 = vid2.replace(".txt", "")
-                        file_path = f"/content/drive/MyDrive/middle_out_results/middle_pred_{vid2}.npy"
-                        features2 = np.load(file_path)
-                        features2 = np.transpose(features2)
-                        features2 = np.squeeze(features2)
-                        break
+            distances_list = []
+            if (len(batch) > 1):
+                current_index = self.index
+                for c, vid2 in enumerate(batch):
+                    if vid1 != vid2:
+                        transcript_vid2 = []
+                        for frame in self.random_index[vid2]:
+                            transcript_vid2.append(self.gt[vid2][frame])
+                        # vid2_gt = self.gt[vid2]
+                        len_diff = abs(len(vid1_gt) - len(self.gt[vid2])) / max(len(vid1_gt), len(self.gt[vid2]))
+                        # single_idx2 = self.random_index[vid2]
+                        # print( self.random_index[vid2])
+                        distances_list.append(
+                            (levenstein2(transcript_vid1, transcript_vid2) + len_diff, vid2))
+                        distances_list = sorted(distances_list, key=lambda x: x[0])
+                vid2 = distances_list[0][1]
+                vid2_gt = self.gt[vid2]
+                single_idx2 = self.random_index[vid2]
                 self.index = current_index
+                features2 = pred[c].cpu().numpy()
+                features2 = np.transpose(features2)
+                features2 = np.squeeze(features2)
+
+            else:
+                current_index = self.index
+                self.index -= batch_size
+                previous_batch = self.list_of_examples[self.index - batch_size:self.index]
+                for c, vid2 in enumerate(previous_batch):
+                    if vid1 != vid2:
+                        transcript_vid2 = []
+                        for frame in self.random_index[vid2]:
+                            transcript_vid2.append(self.gt[vid2][frame])
+                        len_diff = abs(len(vid1_gt) - len(self.gt[vid2])) / max(len(vid1_gt), len(self.gt[vid2]))
+                        # print(single_idx1, self.random_index[vid2])
+                        distances_list.append(
+                            (levenstein2(transcript_vid1, transcript_vid2) + len_diff, vid2))
+                        distances_list = sorted(distances_list, key=lambda x: x[0])
+                vid2 = distances_list[0][1]
+                vid2_gt = self.gt[vid2]
+                single_idx2 = self.random_index[vid2]
+                self.index = current_index
+                file_path = f"/content/drive/MyDrive/middle_out_results/middle_pred_{vid2}.npy"
+                features2 = np.load(file_path)
+                features2 = np.transpose(features2)
+                features2 = np.squeeze(features2)
 
             n, m = features1.shape[0], features2.shape[0]
             dtw = np.zeros((n, m))
@@ -220,7 +240,7 @@ class BatchGenerator:
             alignment_pairs = path[::-1]
             # dtw_matrix = dtw
 
-            mapping_file = "/content/drive/MyDrive/data/gtea/mapping.txt"
+            mapping_file = "/content/drive/MyDrive/data/"+self.gt_path.split('/')[5]+"/mapping.txt"
 
             # MapLabelNumber = {}
             MapNumberLabel = {}
@@ -250,29 +270,16 @@ class BatchGenerator:
 
             for timestamp in single_idx1:
                 timestamp_frames_video1.append((timestamp, vid1_gt[timestamp]))
-                # print((timestamp,vid1_gt[timestamp]))
-
-            # for video, annotation in annotations.items():
-            #     if video == vid1:
-            #         for timestamp_frame in enumerate(annotation):
-            #             timestamp_frames_video1.append((timestamp_frame[1], vid1_gt[timestamp_frame[1]]))
-            #
-            # for video, annotation in annotations.items():
-            #     if video == vid2:
-            #         for timestamp_frame in enumerate(annotation):
-            #             timestamp_frames_video2.append(timestamp_frame[1])
 
             timestamp_pairs = []  # can be deleted; for visualisation only
             generated_timestamps = []
             for i in timestamp_frames_video2:
 
                 for tuple in alignment_pairs[i:]:  # (frame from video1, frame from video2) = tuple
-                    if tuple[1] == i:
+                    if (tuple[1] == i) and (MapNumberLabel[i].lower() != "background".lower()):
                         timestamp_pairs.append(tuple)
                         generated_timestamps.append((tuple[0], vid2_gt[tuple[1]]))  # (frame video1, action video2)
                         break
-            # generated timestamp frame =100
-            # original timestamp frame = 100
 
             new_timestamps = []  # needed timestamps from generated timestamps
             for tuple in generated_timestamps:  # frame from video1, action label from video2
@@ -305,14 +312,9 @@ class BatchGenerator:
                     except IndexError:
                         continue
 
-            # if (vid1 == "S4_Coffee_C1.txt"):
-            #     print(new_timestamps)
-            #     print(generated_timestamps)
-
             for index, timestamp in enumerate(new_timestamps):
                 if index == 0:
                     continue
-                # print(index)
                 try:
                     index_dtw = 0
                     while index_dtw < (len(timestamp_frames_video1) - 1) and timestamp[0] > \
@@ -388,12 +390,6 @@ class BatchGenerator:
                     print("index error in solution 1")
                     continue
 
-            # if (vid1 == "S4_Coffee_C1.txt"):
-            #     print(new_timestamps)
-            #     print(generated_timestamps)
-
-            # new_timestamps = sorted(new_timestamps, key=lambda x: x[0])
-
             for tuple in new_timestamps:
                 index_dtw = 0
                 while index_dtw < (len(timestamp_frames_video1) - 1) and tuple[0] > \
@@ -409,13 +405,11 @@ class BatchGenerator:
 
             for i in range(0, len(timestamp_frames_video1) - 1):
                 if timestamp_frames_video1[i][1] == timestamp_frames_video1[i + 1][1]:
-                    for j in range(timestamp_frames_video1[i][0] + 1, timestamp_frames_video1[i + 1][0]):
+                    for j in range(timestamp_frames_video1[i][0] , timestamp_frames_video1[i + 1][0]):
                         boundary_target[j] = timestamp_frames_video1[i][
                             1]  # assigning labels to frames between two similar timestamps
-                # boundary_target[timestamp_frames_video1[i][0]] = timestamp_frames_video1[i][
-                #     1]  # assign labels to frames with timestamp
             for timestamp in single_idx1:
-                boundary_target[timestamp] = vid1_gt[timestamp]
+                boundary_target[timestamp] = vid1_gt[timestamp]# assigning labels to timestamp frames
             if (timestamp_frames_video1[-1][1] == timestamp_frames_video1[-2][
                 1]):  # assign labels to frames from 0 to first timestamp
                 for i in range(timestamp_frames_video1[-2][0], len(vid1_gt)):
@@ -440,12 +434,7 @@ class BatchGenerator:
                     else:
                         fp += 1
 
-            # print(vid1, "precision", tp / (tp + fp), "recall", tp / (tp + fn))
-
-            if (epoch_num % 10 == 0):
-
-                # print(vid1)
-                # print(timestamp_frames_video2)
+            if (epoch_num % 10 == 0): # visualization, whole part can be removed to make faster
                 MaxFrames = max(len(vid1_gt), len(vid2_gt))
 
                 fig, (ax1, ax2, ax3) = plt.subplots(nrows=3, ncols=1, figsize=(10, 2))
@@ -520,11 +509,5 @@ class BatchGenerator:
                 plt.savefig(
                     "/content/drive/MyDrive/visualise/" + vid1.split('.txt')[0] + "_epoch" + str(epoch_num) + ".png")
 
-                # for i in range(0,len(video1_content))
-
         return boundary_target_tensor, tp, fp, fn
         # return dtw_content
-
-
-
-
